@@ -57,14 +57,17 @@ bool Vertex::isContinue() const
 
 bool Vertex::operator==(const Vertex&other) const
 {
-	if(name == other.name && status == other.status && state == other.state)
-		return true;
-	return false;
+  return (name == other.name && status == other.status && state == other.state);
 }
 
 bool Vertex::operator!=(const Vertex&other) const
 {
 	return !(*this == other);
+}
+
+bool Vertex::operator==(int value) const 
+{
+  return state == value;
 }
 
 Vertex::operator int() const
@@ -116,8 +119,8 @@ std::ostream &operator<<(std::ostream &out,const Edge& e)
 		out << ", cost=" << e.cost;
 	}
 	
-	out << *(e.start);
-	out << *(e.end);
+	out << "start:" << *(e.start);
+	out << "end:" << *(e.end);
 	out << endl;
 	out << "}";
 
@@ -147,6 +150,11 @@ Edge& Edge::operator=(const Edge &other)
 bool Edge::operator==(const Edge &other) const
 {
 	return start == other.start && end == other.end && cost == other.cost && input == other.input;
+}
+
+bool Edge::operator==(const pair<pair<int,int>,string> &other) const
+{
+  return *start == std::get<0>(std::get<0>(other)) && *end == std::get<1>(std::get<0>(other)) && input == std::get<1>(other);
 }
 
 bool Edge::operator!=(const Edge &other) const
@@ -548,7 +556,7 @@ bool Graph::toDFA(Graph &g)
 	// make a new graph
 	newGraph(tstart,vlist,tedges,tfinish,g);
 
-	return false;
+	return true;
 }
 
 void newGraph(const Graph::vertex_type& nstart,const std::list<Graph::vertex_type *> &nlist,

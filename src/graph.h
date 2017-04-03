@@ -5,6 +5,7 @@
 #include <string>
 #include <iterator>
 #include <iostream>
+#include <utility>
 using namespace std;
 
 
@@ -28,6 +29,7 @@ public:
 	Vertex(const Vertex&);
 	Vertex& operator=(const Vertex& other);
 	bool operator==(const Vertex&other) const;
+	bool operator==(int value) const;
 	bool operator!=(const Vertex&other) const;
 	operator int() const;
 	bool isFinish() const;
@@ -48,6 +50,7 @@ struct Edge {
 	Edge(const Edge&);
 	Edge& operator=(const Edge&other);
 	bool operator==(const Edge &other) const;
+        bool operator==(const pair<pair<int,int>,string> &other) const;
 	bool operator!=(const Edge &other) const;
 	bool isSelf() const;
 };

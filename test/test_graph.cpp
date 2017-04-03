@@ -139,8 +139,15 @@ TEST (GraphTest,AllMethods) {
 	g.addVertex(&v3);
 	
 	g.addEdge(&e3);
+	g.addEdge(&e1);
+	EXPECT_TRUE(g.existEdge(&e1));
 	EXPECT_TRUE(g.isNFA());
+	EXPECT_EQ(g.vertex_size(),3);
 	cout << g << endl;
+	//cout  << "e1:" << e1 << endl;
+	Graph g1("g1");
+	g.toDFA(g1);
+	cout << "g1" << endl << g1 << endl;
 }
 
 int main(int argc,char *argv[])
