@@ -7,7 +7,7 @@ export
 subdirs := $(shell find * -maxdepth 0 -type d) 
 objects := $(wildcard *.o)
 
-subdirs:
+subdirs: 
 	for dir in $(subdirs); do \
 	$(MAKE) -C $$dir;	\
 	done

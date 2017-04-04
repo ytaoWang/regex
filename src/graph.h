@@ -6,6 +6,7 @@
 #include <iterator>
 #include <iostream>
 #include <utility>
+#include <set>
 using namespace std;
 
 
@@ -57,8 +58,8 @@ struct Edge {
 
 
 class Graph {
-	typedef std::list<Edge *> edge_type;
-	typedef std::list<Vertex *> vertex_type;
+	typedef std::set<Edge *> edge_type;
+	typedef std::set<Vertex *> vertex_type;
 	typedef std::list<std::string> symbol_type;
 	edge_type edges;
 	vertex_type vertices;
@@ -79,13 +80,13 @@ public:
 	void removeEdge(Edge *edge);
 
 	template <typename F>
-	void getEdges(std::list<Edge*> &e,F fn);
+	void getEdges(edge_type &e,F fn);
 	
 	template <typename F>
-	void getVertices(std::list<Vertex*> &e,F fn);
+	void getVertices(vertex_type &e,F fn);
 
-	typedef std::list<Edge*>::iterator edge_iterator;
-	typedef std::list<Vertex*>::iterator vertex_iterator;
+	typedef std::set<Edge*>::iterator edge_iterator;
+	typedef std::set<Vertex*>::iterator vertex_iterator;
 	
 	edge_iterator edge_begin()  {return edges.begin();}
 	edge_iterator edge_end()  {return edges.end();}
@@ -106,7 +107,7 @@ public:
 	bool isAcceptSym(const std::string &s);
 	bool isNFA();
 	bool DFAMatch(const std::string &str);
-	vertex_type closure(const std::string &str = std::string());
+	vertex_type closure(const vertex_type &);
 	void closure(const std::string &str,const vertex_type &svt,vertex_type &dvt);
 	void once_closure(const std::string &str,const vertex_type &svt,vertex_type &dvt);
 	bool toDFA(Graph &g);
@@ -118,7 +119,7 @@ public:
 
 private:
 	template <typename T,typename F>
-	void get(const std::list<T> &l,std::list<T> &r,F fn);
+	void get(const std::set<T> &l,std::set<T> &r,F fn);
 
 	bool beginWith(const std::string& dst,const string &src) const;
 	bool containFinish(const vertex_type& vertices) const;

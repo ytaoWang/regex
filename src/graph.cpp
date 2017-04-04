@@ -5,6 +5,8 @@
 #include <string>
 #include <list>
 #include <map>
+#include <set>
+#include <stack>
 
 #include "graph.h"
 
@@ -177,10 +179,10 @@ void Graph::addVertex(Vertex *vertex)
 	}
 
 	if(vertex->isFinish() && !isFinish(vertex)) {
-		finish.push_back(vertex);
+		finish.insert(vertex);
 	}
 
-	vertices.push_back(vertex);
+	vertices.insert(vertex);
 }
 
 template <typename T,typename F>
@@ -200,7 +202,7 @@ T filterFn(const T& t,F fn)
 	for(typename T::const_iterator it = t.begin(); it != t.end();++it)
 	{
 		if(fn(*it)) {
-			ret.push_back(*it);
+			ret.insert(*it);
 		}
 			
 	}
@@ -210,7 +212,7 @@ T filterFn(const T& t,F fn)
 
 void Graph::removeVertex(Vertex *vertex)
 {	
-	std::list<Edge*> es;
+	std::set<Edge*> es;
 	auto fn = [&](Edge *it) {
 		return it->start == vertex || it->end == vertex;
 	};
@@ -219,25 +221,25 @@ void Graph::removeVertex(Vertex *vertex)
 	for(edge_iterator it = es.begin();it != es.end();++it)
 		removeEdge(*it);
 
-	vertices.remove(vertex);
+	vertices.erase(vertex);
 	if(start == vertex) start = nullptr;
-	if(isFinish(vertex)) finish.remove(vertex);
+	if(isFinish(vertex)) finish.erase(vertex);
 }
 
 template <typename T,typename F>
-void Graph::get(const std::list<T> &l,std::list<T> &r,F fn)
+void Graph::get(const std::set<T> &l,std::set<T> &r,F fn)
 {
 	r = filterFn(l,fn);
 }
 
 template <typename F>
-void Graph::getEdges(std::list<Edge*> &e,F fn)
+void Graph::getEdges(edge_type &e,F fn)
 {
 	get(edges,e,fn);
 }
 	
 template <typename F>
-void Graph::getVertices(std::list<Vertex*> &e,F fn)
+void Graph::getVertices(vertex_type &e,F fn)
 {
 	get(vertices,e,fn);
 }
@@ -247,7 +249,7 @@ void Graph::addEdge(Edge *edge)
 	if(!existVertex(edge->start) || !existVertex(edge->end))
 		throw std::logic_error("vertex isn't in graph");
 	if(!existEdge(edge))
-		edges.push_back(edge);
+		edges.insert(edge);
 
 	if(!isAcceptSym(edge->input))
 		symbols.push_back(edge->input);
@@ -255,7 +257,7 @@ void Graph::addEdge(Edge *edge)
 
 void Graph::removeEdge(Edge *edge)
 {
-	edges.remove(edge);
+	edges.erase(edge);
 }
 
 bool Graph::existVertex(Vertex *v)
@@ -414,9 +416,9 @@ bool Graph::DFAMatch(const std::string &str)
 			//cout << "match:" << (es.front()) ->input << endl;
 			if(es.size() == 0) break;
 			assert(es.size() ==1);
-			it = (es.front())->end;
-			cout << *(es.front()) << endl;
-			i = i + (es.front())->input.size();
+			it = (*(es.begin()))->end;
+			cout << *(es.begin()) << endl;
+			i = i + (*(es.begin()))->input.size();
 		}
 
 	return it->isFinish() && i == str.size() && isFinish(it);
@@ -439,60 +441,63 @@ bool Graph::isNFA()
 	return false;
 }
 
-// calculate start symbol closure
-Graph::vertex_type Graph::closure(const std::string &str)
+// calculate empty symbol closure
+Graph::vertex_type Graph::closure(const vertex_type &svt)
 {
-	vertex_type svt,dvt;
-	
-	if(!isAcceptSym(str)) 
-		throw std::logic_error(str + " is not in accept symbols.");
-	
-	svt.push_back(start);
-	
-	closure(str,svt,dvt);
-	
-	return dvt;
-}
+  vertex_type dvt;
+  stack<Vertex *> sk;
+  
+  for_each(svt.begin(),svt.end(),
+	   [&](Vertex *v){
+	     dvt.insert(v);
+	     sk.push(v);
+	   });
 
-// find all vertex where start is in set svt and input is str with empty str
-void Graph::closure(const std::string &str,const vertex_type &svt,vertex_type &dvt)
-{
-	vertex_type vt(svt);
-	// first calculate empty state
-	once_closure(std::string(),vt,dvt);
-	if(str.empty()) return;
-	// second calculate str state 
-	vt = dvt;
-	once_closure(str,vt,dvt);
-	// third calculate empty state
-	vt = dvt;
-	once_closure(std::string(),vt,dvt);
+
+  Vertex *item;
+  edge_type es;
+  while(!sk.empty()) {
+    item = sk.top();
+    sk.pop();
+    //get edge which vertex start is item and input is empty
+    es.clear();
+    auto fn = [&](const Edge *e){
+      return e->start == item && e->input.empty();
+    };
+
+    getEdges(es,fn);
+    for_each(es.begin(),es.end(),[&](Edge *e){
+	if(dvt.find(e->end) != dvt.end()) 
+	  dvt.insert(e->end);
+      });
+  }
+
+  return dvt;
 }
 
 // find all vertex where start is in set svt and input is str without empty str
-void Graph::once_closure(const std::string &str,const vertex_type &svt,vertex_type &dvt)
+void Graph::closure(const std::string &str,const vertex_type &svt,vertex_type &dvt)
 {
-	if(!isAcceptSym(str)) 
-		throw std::logic_error(str + " is not in accept symbols.");
-	
-	edge_type es;
-	
-	for(vertex_type::const_iterator sit = svt.begin(); sit != svt.end(); ++sit) {
 
-		auto fn = [&](const Edge *e) {
-			return e->start == *sit && (e->input == str);
-		};
-		
-		// find all edges
-		getEdges(es,fn);
-		
-		for(edge_type::const_iterator eit = es.begin(); eit != es.end(); ++eit) {
-		
-			if(std::find(dvt.begin(),dvt.end(),(*eit)->end) == dvt.end()) {
-				dvt.push_back((*eit)->end);
-			}
-		}
-	}
+  dvt.clear();
+
+  auto fn = [&](Vertex *v) {
+    
+    edge_type es;
+
+    auto fn1 = [&](const Edge *e) {
+      return e->start == v && e->input == str;
+    };
+
+    getEdges(es,fn1);
+    for_each(es.begin(),es.end(),[&](Edge *e){
+	if(dvt.find(e->end) != dvt.end()) 
+	  dvt.insert(e->end);
+      });
+  };
+
+  for_each(svt.begin(),svt.end(),fn);
+
 }
 
 /**
@@ -506,55 +511,6 @@ bool Graph::toDFA(Graph &g)
 		return true;
 	}
 
-	vertex_type *dvt = new vertex_type();
-	vertex_type tstart;
-	//calculate start symbol closure
-	*dvt = closure(std::string());
-	tstart = *dvt;
-
-	//new vertices set
-	std::list<vertex_type *> vlist;
-	// new edges set
-	std::list<TEdge> tedges;
-	// new finish set
-	std::list<vertex_type*> tfinish;
- 
-	vlist.push_back(dvt);
-
-	if(containFinish(tstart))
-		tfinish.push_back(&tstart);
-	
-	
-	vertex_type svt = *dvt;
-
-	for(std::list<vertex_type *>::iterator it = vlist.begin();it != vlist.end();++it) {
-
-		for(std::string s : symbols) {
-			dvt = new vertex_type();
-			//calculate *it 's input symbol
-			closure(s,**it,*dvt);
-
-			// new edge
-			TEdge te;
-			te.start = **it;
-			te.end = *dvt;
-			te.input = s;
-			tedges.push_back(te);
-			
-			// make sure dvt contain finish state
-			if(containFinish(*dvt))
-				tfinish.push_back(dvt);
-			
-
-			// new state
-			if(std::find(vlist.begin(),vlist.end(),dvt) == vlist.end()) {
-				vlist.push_back(dvt);
-			}
-		}
-	}
-	
-	// make a new graph
-	newGraph(tstart,vlist,tedges,tfinish,g);
 
 	return true;
 }
@@ -564,45 +520,5 @@ void newGraph(const Graph::vertex_type& nstart,const std::list<Graph::vertex_typ
 			  const std::list<Graph::vertex_type *> &nfinish,
 			  Graph &ng)
 {
-	std::map<const Graph::vertex_type*,Vertex*> vtovt;
 
-	// add start vertex
-	Vertex *v1,*v2;
-	Edge *e;
-
-	Vertex *v = new Vertex("start vertex",S_START);
-	vtovt.insert(std::pair<const Graph::vertex_type*,Vertex*>(&nstart,v));
-	ng.addVertex(v);
-
-	// add finish vertex
-	for(std::list<Graph::vertex_type *>::const_iterator it = nfinish.begin();
-		it != nfinish.end(); ++it) {
-		if(vtovt.find(*it) != vtovt.end()) {
-			v = new Vertex("finish vertex",S_FINISH);
-			vtovt.insert(std::pair<const Graph::vertex_type*,Vertex*>(*it,v));
-			ng.addVertex(v);
-		}
-	}
-
-	for(std::list<Graph::TEdge>::const_iterator it = nedges.begin();
-		it != nedges.end();++it)
-		{
-			if(vtovt.find(&(it->start)) != vtovt.end()) {
-				v1 = new Vertex("continue vertex",S_CONTINUE);
-				vtovt.insert(std::pair<const Graph::vertex_type*,Vertex*>(&(it->start),v1));
-				ng.addVertex(v1);
-			}
-
-			if(vtovt.find(&(it->end)) != vtovt.end()) {
-				v2 = new Vertex("continue vertex",S_CONTINUE);
-				vtovt.insert(std::pair<const Graph::vertex_type*,Vertex*>(&(it->end),v2));
-				ng.addVertex(v2);
-			}
-			//the edge is new,so it's also new
-			e = new Edge(v1,v2,(*it).input);
-			ng.addEdge(e);
-
-		}
-	
-	assert(nlist.size() == vtovt.size());
 }
