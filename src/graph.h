@@ -72,6 +72,10 @@ class Graph {
 		vertex_type end;
 		string input;
 	};
+	struct vertex_visit_type {
+	  vertex_type vt;
+	  bool visited;
+	};
 public:
 	Graph(const string &n);
 	void addVertex(Vertex *vertex);
@@ -107,15 +111,18 @@ public:
 	bool isAcceptSym(const std::string &s);
 	bool isNFA();
 	bool DFAMatch(const std::string &str);
-	vertex_type closure(const vertex_type &);
+	void closure(const vertex_type &,vertex_type &);
 	void closure(const std::string &str,const vertex_type &svt,vertex_type &dvt);
 	void once_closure(const std::string &str,const vertex_type &svt,vertex_type &dvt);
 	bool toDFA(Graph &g);
 
 	friend std::ostream &operator<<(std::ostream &os,const Graph& g);
-	friend void newGraph(const vertex_type& nstart,const std::list<vertex_type *> &nlist,
-						 const std::list<TEdge> &nedges,const std::list<vertex_type *> &nfinish,
-						 Graph &ng);
+	friend void newGraph(const Graph::vertex_type& nstart,
+			     const std::list<vertex_type> &nlist,
+			     const std::list<TEdge> &nedges,
+			     const std::list<vertex_type> &nfinish,
+			     const symbol_type &symbol,
+			     Graph &ng);
 
 private:
 	template <typename T,typename F>

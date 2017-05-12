@@ -442,9 +442,8 @@ bool Graph::isNFA()
 }
 
 // calculate empty symbol closure
-Graph::vertex_type Graph::closure(const vertex_type &svt)
+void Graph::closure(const vertex_type &svt,vertex_type &dvt)
 {
-  vertex_type dvt;
   stack<Vertex *> sk;
   
   for_each(svt.begin(),svt.end(),
@@ -471,8 +470,6 @@ Graph::vertex_type Graph::closure(const vertex_type &svt)
 	  dvt.insert(e->end);
       });
   }
-
-  return dvt;
 }
 
 // find all vertex where start is in set svt and input is str without empty str
@@ -502,7 +499,7 @@ void Graph::closure(const std::string &str,const vertex_type &svt,vertex_type &d
 
 /**
  *
- * make a NFA to DFA using 
+ * make a NFA to DFA using subset construction
  **/
 bool Graph::toDFA(Graph &g)
 {
@@ -511,14 +508,114 @@ bool Graph::toDFA(Graph &g)
 		return true;
 	}
 
+	vertex_type nstart,tmp;
+	std::list<vertex_type> nlist;
+	std::list<vertex_visit_type*> nvt;
+	std::list<Graph::TEdge> nedges;
+	std::list<vertex_type> nfinish;
+
+	tmp.insert(start);
+	closure(tmp,nstart);
+
+	
+	vertex_visit_type *it =  new vertex_visit_type;
+	it->vt = nstart;
+	it->visited = false;
+	nvt.push_back(it);
+	nlist.push_back(nstart);
+	
+	for(std::list<vertex_visit_type *>::iterator item = nvt.begin();
+	    item != nvt.end(); ++item)  {
+	  if((*item)->visited) continue;
+	(*item)->visited = true;
+	for_each(symbols.begin(),symbols.end(),[&](string str)
+		 {
+		   vertex_type dvt;
+		   tmp.clear();
+		   closure(str,(*item)->vt,tmp);
+		   closure(tmp,dvt);
+		   if(std::find_if(nvt.begin(),nvt.end(),
+				   [&dvt](const vertex_visit_type *vvt){
+				     return vvt->vt == dvt && vvt->visited == false;
+				   }) 
+		      != nvt.end()) {
+		     it =  new vertex_visit_type;
+		     it->vt = dvt;
+		     it->visited = false;
+		     nvt.push_back(it);
+		     nlist.push_back(dvt);
+		     // insert finish status
+		     if(containFinish(dvt))
+		       nfinish.push_back(dvt);
+		     
+		   }
+			      
+		   // add edge into TEdge
+		   Graph::TEdge tedge;
+		   tedge.start = (*item)->vt;
+		   tedge.end = dvt;
+		   tedge.input = str;
+		   nedges.push_back(tedge);
+		 });
+	}
+
+
+	newGraph(nstart,nlist,nedges,nfinish,symbols,g);
+	//delete nvt;
+	while(!nvt.empty()){
+	  it = nvt.back();
+	  nvt.pop_back();
+	  delete it;
+	}
 
 	return true;
 }
 
-void newGraph(const Graph::vertex_type& nstart,const std::list<Graph::vertex_type *> &nlist,
-			  const std::list<Graph::TEdge> &nedges,
-			  const std::list<Graph::vertex_type *> &nfinish,
-			  Graph &ng)
+void newGraph(const Graph::vertex_type& nstart,
+	      const std::list<Graph::vertex_type> &nlist,
+	      const std::list<Graph::TEdge> &nedges,
+	      const std::list<Graph::vertex_type> &nfinish,
+	      const Graph::symbol_type &symbols,
+	      Graph &ng)
 {
+  int count = 0;
+  std::map<Graph::vertex_type,Vertex*> mv;
 
+  // add start state to ng
+  Vertex *v = new Vertex("v" + std::to_string(count++),S_START);
+  mv.insert(make_pair(nstart,v));
+
+  
+  ng.addVertex(v);
+
+  //transform vertex
+  auto fn = [&](const Graph::vertex_type &vt) {
+    if(mv.find(vt) != mv.end()) {
+      
+      if(std::find(nfinish.begin(),nfinish.end(),vt) != nfinish.end())
+	v = new Vertex("v" + std::to_string(count++),S_CONTINUE);
+      else
+	v = new Vertex("v" + std::to_string(count++),S_FINISH);
+      
+      mv.insert(make_pair(vt,v));
+      ng.addVertex(v);      
+    }
+  };
+  
+  for_each(nlist.begin(),nlist.end(),fn);
+
+  //transform edge
+  auto fn1 = [&](const Graph::TEdge &e) {
+
+    assert(mv.find(e.start) != mv.end());
+    assert(mv.find(e.end) != mv.end());
+    
+    Vertex *start = mv.find(e.start)->second;
+    Vertex *end = mv.find(e.end)->second;
+
+    Edge *edge = new Edge(start,end,e.input);
+    ng.addEdge(edge);
+  };
+
+  for_each(nedges.begin(),nedges.end(),fn1);
 }
